@@ -1,18 +1,20 @@
-# stage2_kalman_from_csv.py
-# Read video + CSVs from stage 1, then track a single rat with a Kalman filter and save MP4.
+# Reads video + CSVs from stage 1, then tracks a single rat with a Kalman filter and saves MP4
+# Outputs the kalman tracked video file with blue dots representing the prediction of the filter
+# green dot represeting the measurement and red dot and consequent red track represeting the tracking
+# Note: This file should be run after outputs from stage1_mog2_relations.py have been generated
 
 import cv2
 import csv
 import numpy as np
 from collections import defaultdict, deque
 
-# ------------- USER INPUTS -------------
+# Inputs from previous stage 1
 video_path       = r"../ES30_1_13_24_cropped.mp4"
 blobs_csv_path   = "ES30_1_13_24_cropped_blobs.csv"
 relations_path   = "ES30_1_13_24_cropped_relations.csv"
 out_kalman_mp4   = "ES30_1_13_24_cropped_kalman.mp4"
 
-# Kalman / selection params
+# Kalman selection params
 kf_base_R        = 20.0       # base measurement noise (px), scaled by overlap proxy
 kf_Q_pos_acc     = 1e-1
 kf_Q_vel_acc     = 1e-1
@@ -20,7 +22,7 @@ init_box_wh      = 60
 pred_box_alpha   = 0.25       # EMA for w/h
 kalman_gate_norm = 0.60       # gate measurement by normalized distance
 
-# ------------- HELPERS -------------
+# helper functions
 def make_mp4_writer(path, fps, size):
     W, H = size
     fourcc = cv2.VideoWriter_fourcc(*"avc1")
@@ -94,7 +96,7 @@ class RatKF:
         self.trail.append((int(cx), int(cy)))
         return cx, cy
 
-# ------------- LOAD CSVs -------------
+# loading the csvs
 def load_blobs_csv(path):
     # returns: blobs[frame] = {blob_id: {"area":..., "bbox":(x,y,w,h,a), "cent":(cx,cy)}}
     blobs = defaultdict(dict)
@@ -126,7 +128,7 @@ def load_relations(path):
                     pass
     return pairs
 
-# ------------- MAIN -------------
+# the main function
 def main():
     # Load CSVs
     blobs = load_blobs_csv(blobs_csv_path)
@@ -144,7 +146,7 @@ def main():
 
     kf = RatKF(dt=1.0, init_box=init_box_wh)
 
-    # Selection state: which blob ID are we following?
+    # Selection state: the blob ID are we following
     prev_chosen_id = None
     frame_idx = 0
 
@@ -155,7 +157,7 @@ def main():
         frame_blobs = blobs.get(frame_idx, {})
         kf_frame = frame.copy()
 
-        # ---- predict ----
+        # predict
         px, py = kf.predict()
 
         # Choose a measurement:
@@ -195,7 +197,7 @@ def main():
                 kf.box_w = (1 - pred_box_alpha) * kf.box_w + pred_box_alpha * meas_box[2]
                 kf.box_h = (1 - pred_box_alpha) * kf.box_h + pred_box_alpha * meas_box[3]
 
-        # Always draw prediction (blue)
+        # draw prediction in blue
         cv2.circle(kf_frame, (int(px), int(py)), 6, (255, 0, 0), -1)
 
         # Build predicted box for overlap proxy

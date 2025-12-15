@@ -1,16 +1,17 @@
-# stage1_mog2_relations.py
-# MOG2 segmentation + greedy overlap associations + CSVs + overlay MP4
+# Performs MOG2 segmentation + greedy overlap associations + CSVs + overlay MP4
+# Outputs the association CSVs and overlay MP4 video
+# Run this file before running stage2_kalman_from_csv.py
 
 import cv2
 import csv
 import numpy as np
 
-# ------------- USER INPUTS -------------
+# User inputs
 video_path = r"../ES30_1_13_24_cropped.mp4"
 out_prefix = "ES30_1_13_24_cropped"
 
 min_area_px   = 300         # ignore tiny specks
-kernel_size   = 10           # morphology kernel
+kernel_size   = 10          # morphology kernel
 history       = 600         # MOG2 memory
 varThreshold  = 25          # higher = less sensitive
 detectShadows = False
@@ -20,12 +21,12 @@ warmup_frames = 200         # warmup MOG2, no outputs
 overlap_gate   = 0.00       # allow 0 to be permissive
 dist_gate_norm = 0.25       # normalized centroid distance gate
 
-# ------------- OUTPUTS -------------
+# Outputs
 out_overlay_mp4   = f"{out_prefix}_overlay.mp4"
 out_blobs_csv     = f"{out_prefix}_blobs.csv"
 out_relations_csv = f"{out_prefix}_relations.csv"
 
-# ------------- HELPERS -------------
+# Helper functions
 def make_mp4_writer(path, fps, size):
     W, H = size
     # Try H.264
@@ -49,7 +50,7 @@ def bbox_intersection(ax, ay, aw, ah, bx, by, bw, bh):
     return iw * ih
 
 def overlap_ratio(prev_stat, curr_stat):
-    # overlap / min(area_prev, area_curr) — robust to splits/merges
+    # overlap / min(area_prev, area_curr)
     x1, y1, w1, h1, a1 = prev_stat
     x2, y2, w2, h2, a2 = curr_stat
     inter = bbox_intersection(x1, y1, w1, h1, x2, y2, w2, h2)
@@ -61,7 +62,7 @@ def overlap_ratio(prev_stat, curr_stat):
 def norm_distance(p, q, W, H):
     return float(np.hypot((p[0]-q[0]) / max(1.0, W), (p[1]-q[1]) / max(1.0, H)))
 
-# ------------- MAIN -------------
+# The main function
 def main():
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -86,7 +87,7 @@ def main():
     # CSVs
     blobs_f = open(out_blobs_csv, "w", newline="")
     blobs_wr = csv.writer(blobs_f)
-    # Per-blob schema (IDs are per-frame CC labels)
+    # Per blob schema (IDs are per-frame CC labels)
     blobs_wr.writerow(["frame","blob_id","area","bbox_x","bbox_y","bbox_w","bbox_h","centroid_x","centroid_y"])
 
     rel_f = open(out_relations_csv, "w", newline="")
@@ -103,13 +104,13 @@ def main():
         ret, frame = cap.read()
         if not ret: break
 
-        # --- segmentation ---
+        # segmentation
         fg = fgbg.apply(frame)
         fg = cv2.threshold(fg, 127, 255, cv2.THRESH_BINARY)[1]
         fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN,  kernel, iterations=1)
         fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, kernel, iterations=2)
 
-        # --- components ---
+        # components
         num_labels, labels, stats, cents = cv2.connectedComponentsWithStats(fg)
         curr_ids = [L for L in range(1, num_labels) if stats[L][4] >= min_area_px]
 
@@ -122,7 +123,7 @@ def main():
             cv2.circle(overlay, (int(cx),int(cy)), 3, (0,0,255), -1)
             blobs_wr.writerow([frame_idx, L, a, x, y, w, h, float(cx), float(cy)])
 
-        # --- relations (GREEDY max-overlap, current→best previous) ---
+        # relations
         if prev_stats is not None and len(prev_ids) > 0:
             curr_best_prev = {}   # curr Lc -> chosen prev Lp
             used_prev = set()
