@@ -1,7 +1,7 @@
 import cv2
 
 # Set video path and frame index
-video_path   = r"../ES30_1_13_24.mp4"
+video_path   = r"ES30_1_13_24.mp4"
 frame_index  = 500                       # frame to sample (0 = first)
 
 # Grab a frame from the video
