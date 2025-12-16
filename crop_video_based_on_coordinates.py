@@ -1,9 +1,9 @@
 import cv2
 
-video_path = "../ES30_1_13_24.mp4"
+video_path = "ES30_1_13_24.mp4"
 out_path    = "ES30_1_13_24_cropped.mp4"
 
-# ---- MANUAL CROP COORDINATES (adjust after testing) ----
+# Manually crop (adjust coordinates after running find_crop_coordinates.py)
 x1, y1 = 733, 349   # top-left corner of crop
 x2, y2 = 1304, 803 # bottom-right corner of crop
 # ---------------------------------------------------------
